@@ -2,7 +2,7 @@ name: Fork Sync
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 每天午夜执行
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   sync_with_upstream:
-    name: Sync with Upstream
     runs-on: ubuntu-latest
     if: ${{ github.event.repository.fork }}
 
@@ -29,15 +28,7 @@ jobs:
           target_sync_branch: main
           test_mode: false
 
-      - name: Check for new commits
-        if: success()
-        run: echo "Sync completed successfully"
-
-      - name: Check for Failure
-        if: failure()
+      - name: Discard workflow file changes
         run: |
-          echo "[Error] Sync failed. Possible reasons:"
-          echo "1. Upstream contains workflow file changes"
-          echo "2. Merge conflicts"
-          echo "3. Network or GitHub API issues"
-          exit 1
+          git reset HEAD .github/workflows || true
+          git checkout -- .github/
