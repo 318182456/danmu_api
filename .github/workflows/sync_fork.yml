@@ -18,17 +18,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      - name: Sync Upstream
+      - name: Sync upstream (no push)
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
           target_repo_token: ${{ secrets.GITHUB_TOKEN }}
           upstream_sync_repo: huangxd-/danmu_api
           upstream_sync_branch: main
           target_sync_branch: main
-          test_mode: false
+          test_mode: true   # ⭐关键
 
       - name: Discard workflow file changes
         run: |
+          echo "Discarding workflow changes..."
           git reset HEAD .github/workflows || true
-          git checkout -- .github/
+          git checkout -- .github/workflows || true
+
+      - name: Push changes manually
+        run: |
+          git status
+          git push origin main
