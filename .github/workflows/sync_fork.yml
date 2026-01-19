@@ -2,7 +2,7 @@ name: Fork Sync
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * *"   # 每天 UTC 00:00，同步一次
   workflow_dispatch:
 
 permissions:
@@ -10,32 +10,39 @@ permissions:
 
 jobs:
   sync_with_upstream:
+    name: Sync fork with upstream
     runs-on: ubuntu-latest
+
+    # 仅在 fork 仓库中执行
     if: ${{ github.event.repository.fork }}
 
     steps:
-      - name: Checkout target repo
+      - name: Checkout fork repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Sync upstream (no push)
+      - name: Sync upstream main into fork main
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
           target_repo_token: ${{ secrets.GITHUB_TOKEN }}
           upstream_sync_repo: huangxd-/danmu_api
           upstream_sync_branch: main
           target_sync_branch: main
-          test_mode: true   # ⭐关键
+          test_mode: false
 
-      - name: Discard workflow file changes
+      # 防止 upstream 覆盖你自己的 CI / workflow
+      - name: Restore local workflow files
         run: |
-          echo "Discarding workflow changes..."
-          git reset HEAD .github/workflows || true
+          echo "Restoring .github/workflows from fork..."
           git checkout -- .github/workflows || true
 
-      - name: Push changes manually
+      - name: Show git status
+        run: git status
+
+      - name: Push changes to fork
         run: |
-          git status
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git push origin main
