@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   sync_with_upstream:
     name: Sync fork with upstream
@@ -22,27 +25,32 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          ref: main
 
       - name: Sync upstream main into fork main
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
-        with:
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-          upstream_sync_repo: huangxd-/danmu_api
-          upstream_sync_branch: main
-          target_sync_branch: main
-          test_mode: false
-
-      # 防止 upstream 覆盖你自己的 CI / workflow
-      - name: Restore local workflow files
-        run: |
-          echo "Restoring .github/workflows from fork..."
-          git checkout -- .github/workflows || true
-
-      - name: Show git status
-        run: git status
-
-      - name: Push changes to fork
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          echo "Adding upstream remote..."
+          git remote add upstream https://github.com/huangxd-/danmu_api.git
+          git fetch upstream main
+          
+          echo "Merging upstream/main..."
+          git merge upstream/main --no-edit || {
+            echo "Merge conflict detected! Resolving by accepting upstream changes..."
+            git checkout --theirs .
+            git add .
+          }
+          
+          echo "Restoring local .github/workflows to prevent override..."
+          git checkout origin/main -- .github/workflows || true
+          
+          echo "Committing and pushing changes..."
+          git add -A
+          # 仅当有未提交的变更时才执行 commit
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "chore(sync): 同步 upstream 并保留本地 workflows"
+          fi
+          
           git push origin main
